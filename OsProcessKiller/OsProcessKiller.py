@@ -7,6 +7,7 @@ import tkinter as tk
 import tkinter.scrolledtext as tkscrtxt
 import tkinter.scrolledtext
 from tkinter import ttk
+from tkinter import messagebox as msgBox
 import copy
 
 #BUILD OPTIONS:
@@ -14,7 +15,7 @@ import copy
 logger = logging.getLogger('OsProcessKileer')
 logger.setLevel(logging.NOTSET)
 
-class Process():
+class Process:
     
     def __init__(self):
         self.__unwantedProcesses= self.readUnwantedProcesses("UnwantedProcesses.txt")
@@ -65,22 +66,38 @@ class Process():
         return unwantedProcessesList
              
         
-        
+AppName="OS unwanted processes' killer"       
+
+def createMessageBox( msg, title=AppName, type='WARNING'):
+    '''
+        possible types: WARNING, INFO,ERROR
+    '''
+    if type=='WARNING':
+        msgBox.showwarning(title, msg)   
+    elif type=='INFO':
+        msgBox.showinfo(title, msg)
+    elif type=='ERROR':
+        msgBox.showerror(title, msg)
+    else: 
+        return
+
 class App():
-        
-        def __init__(self,title="OS unwanted processes' killer"):
+                
+        def __init__(self,title=AppName):
             self.window = tk.Tk()
             self.window.title(title)
-            self.window.resizable(20, 20)
-            #width=600
-            #height=400
-            #self.window.minsize(width=width, height=height)
-            #self.window.maxsize(width=width, height=height)
+            #self.window.resizable(20, 20)
+            width=470
+            height=350
+            ws = self.window.winfo_screenwidth() # width of the screen
+            hs = self.window.winfo_screenheight() # height of the screen
+            x = (ws/2) - (width/2)
+            y = (hs/2) - (height/2)
+            self.window.geometry('%dx%d+%d+%d' % (width, height, x, y))            
             self.process= Process() #process object
             self.setupUi(self.window)
             self.window.mainloop()
-        
-        
+               
         def setupUi(self,win):
             warningLabel = tk.Label(master=win, text="There are other instances of these apps running on, Do you wanna kill them all?") 
             warningLabel.grid(in_=win, row=0, column=0, sticky=tk.NW)
@@ -95,7 +112,6 @@ class App():
             self.killButton=tk.Button(master=win, text="Kill all checked processes", command=self.killProcessesCb,height=3,width = 30)
             self.killButton.grid(in_=win,row=3, column=0,sticky=tk.N)
          
-
         def createProcessView(self, parent):
             frame= ttk.Frame(master=parent,width=150)
             #frame.pack(side=tk.TOP, fill=tk.BOTH, expand=tk.Y) 
@@ -137,7 +153,9 @@ class App():
             frame.rowconfigure(0, weight=1)
             frame.columnconfigure(0, weight=1)
         
+
         
+        #methods concerning data handling
         def fetchProcessData(self,data):
             if len(data)==0 or data== None:
                 raise ValueError("process data cannot be empty !")
@@ -164,7 +182,8 @@ class App():
                 raise ValueError("unwantedProcessList cannot be empty !")
             listOfUnwantedProcesses=[(processInfo) for processInfo in self.process.getListOfAllRunningProcesses() for item in unwantedProcessList if processInfo['name']==item]
             return listOfUnwantedProcesses
-                     
+          
+
         def updateProcessDataInTreeView(self):
             try:
                 processData = self.convertAllProcessesToTreeViewFormat(self.createListOfUnwantedProcesses(self.process.getUnwantedProcesses()))
@@ -172,8 +191,9 @@ class App():
                 self.fetchProcessData(processData)
             except Exception as e:
                 logger.debug("No more process to be killed, close the app!" +str(e))
+                #createMessageBox( msg="There is no more unwanted processes to be killed, close the app", type='INFO')               
                 sys.exit(1) #TODO maybe add messagebox that no more processes exist?
-        
+                
         def clearAllItemsFroTreeView(self):
             for item in self.processTree.get_children():
                 self.processTree.delete(item)
@@ -205,6 +225,7 @@ if __name__ == "__main__":
         app= App()
     except Exception as e:
         logger.debug(str(e))
+        createMessageBox( msg=str(e), type='ERROR')  
         sys.exit(1)
         
     
