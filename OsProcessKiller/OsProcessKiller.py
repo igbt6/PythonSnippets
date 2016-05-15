@@ -9,9 +9,10 @@ import tkinter.scrolledtext
 from tkinter import ttk
 import copy
 
-
+#BUILD OPTIONS:
+#pyinstaller --noconsole --onefile OsProcessKiller.py
 logger = logging.getLogger('OsProcessKileer')
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.NOTSET)
 
 class Process():
     
@@ -71,9 +72,11 @@ class App():
             self.window = tk.Tk()
             self.window.title(title)
             self.window.resizable(20, 20)
+            #width=600
+            #height=400
+            #self.window.minsize(width=width, height=height)
+            #self.window.maxsize(width=width, height=height)
             self.process= Process() #process object
-            self.processes= self.process.getListOfAllRunningProcesses()
-            logger.debug(self.processes)
             self.setupUi(self.window)
             self.window.mainloop()
         
@@ -89,17 +92,21 @@ class App():
             self.createProcessView(win)
             self.createChooserView(win)
             
-            self.killButton=tk.Button(master=win, text="kill all", command=self.killProcessesCb,height=3,width = 20)
-            self.killButton.grid(in_=win,row=3, column=0)
+            self.killButton=tk.Button(master=win, text="Kill all checked processes", command=self.killProcessesCb,height=3,width = 30)
+            self.killButton.grid(in_=win,row=3, column=0,sticky=tk.N)
          
 
         def createProcessView(self, parent):
-            frame= ttk.Frame(master=parent)
+            frame= ttk.Frame(master=parent,width=150)
             #frame.pack(side=tk.TOP, fill=tk.BOTH, expand=tk.Y) 
             frame.grid(in_=parent, row=2, column=0, sticky=tk.NSEW)            
             # create the tree and scrollbars
             self.processTreeDataColumns = ('NAME', 'PID', 'USER')       
             self.processTree = ttk.Treeview(columns=self.processTreeDataColumns,show = 'headings',selectmode=tk.EXTENDED)
+            for c in self.processTreeDataColumns:
+                    self.processTree.heading(c, text=c)
+            for col in self.processTreeDataColumns:
+                self.processTree.column(col,minwidth=0,width=150, stretch=tk.YES)
             processTreeYsb = ttk.Scrollbar(orient=tk.VERTICAL, command= self.processTree.yview)
             processTreeXsb = ttk.Scrollbar(orient=tk.HORIZONTAL, command= self.processTree.xview)
             self.processTree['yscroll'] = processTreeYsb.set
@@ -112,14 +119,13 @@ class App():
             
             frame.rowconfigure(0, weight=1)
             frame.columnconfigure(0, weight=1)
-            
-            
+                      
             #fetch data into Tree View
             self.updateProcessDataInTreeView()
         
         def createChooserView(self,parent):
             frame= ttk.Frame(master=parent)
-            frame.grid(in_=parent, row=2, column=1, sticky=tk.NE)            
+            frame.grid(in_=parent, row=3, column=0, sticky=tk.NW)            
             # create check button
             self.checkAllButtonVar= tk.IntVar()
             self.checkAllButtonVar.set(0)
@@ -156,35 +162,37 @@ class App():
         def createListOfUnwantedProcesses(self, unwantedProcessList):
             if len(unwantedProcessList)==0 or unwantedProcessList==None:
                 raise ValueError("unwantedProcessList cannot be empty !")
-            listOfUnwantedProcesses=[(processInfo) for processInfo in self.processes for item in unwantedProcessList if processInfo['name']==item]
+            listOfUnwantedProcesses=[(processInfo) for processInfo in self.process.getListOfAllRunningProcesses() for item in unwantedProcessList if processInfo['name']==item]
             return listOfUnwantedProcesses
                      
         def updateProcessDataInTreeView(self):
-            processData = self.convertAllProcessesToTreeViewFormat(self.createListOfUnwantedProcesses(self.process.getUnwantedProcesses()))
-            if len(processData)==0:
-                logger.debug("No more process to be killed, close the app!")
-                sys.exit(1)
-            for c in self.processTreeDataColumns:
-                self.processTree.heading(c, text=c)
-            #self.processTree.delete(self.processTree.get_children(''))
-            self.fetchProcessData(processData)
+            try:
+                processData = self.convertAllProcessesToTreeViewFormat(self.createListOfUnwantedProcesses(self.process.getUnwantedProcesses()))
+                self.clearAllItemsFroTreeView()
+                self.fetchProcessData(processData)
+            except Exception as e:
+                logger.debug("No more process to be killed, close the app!" +str(e))
+                sys.exit(1) #TODO maybe add messagebox that no more processes exist?
         
+        def clearAllItemsFroTreeView(self):
+            for item in self.processTree.get_children():
+                self.processTree.delete(item)
+                 
         #callbacks
         def killProcessesCb(self):
             procNames=[self.processTree.item(child)['values'][0] for child in self.processTree.selection()]
             logger.debug(procNames)
             if(len(procNames)==0):
                 return         
-            for processInfo in self.processes:
-                self.killButton.configure(text='Killing...')
+            for processInfo in self.process.getListOfAllRunningProcesses():
+                #self.killButton.configure(text='Killing...')
                 if(any(procN ==processInfo['name'] for procN in procNames)):
                     self.process.terminateProcess(processInfo['pid'])
+                    #map(self.processTree.delete, self.processTree.get_children())
                     self.updateProcessDataInTreeView()
-            self.killButton.configure(text='Done!')
+            #self.killButton.configure(text='Done!')
         
         def checkAllItemsCb(self):
-            #data = [self.processTree.item(child)['values'] for child in self.processTree.get_children('')]
-            #logger.debug(data)
             if self.checkAllButtonVar.get() ==1:
                 self.processTree.selection_set(self.processTree.get_children(''))
             else:
