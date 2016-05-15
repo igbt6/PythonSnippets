@@ -1,0 +1,4 @@
+//UNWANTED_PROCESSES//
+qtcreator.exe
+mspaint.exe
+//UNWANTED_PROCESSES_END//
