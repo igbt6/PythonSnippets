@@ -7,6 +7,10 @@ More: https://developers.google.com/drive/v3/web/quickstart/python
 * Google client api( https://developers.google.com/api-client-library/python/ ):
   ```
   pip install --upgrade google-api-python-client
+  ```  
+  or 
+  ```
+  pip install --upgrade google-api-python-client-py3
   ``` 
   
 
