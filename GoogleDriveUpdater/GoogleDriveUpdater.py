@@ -118,22 +118,110 @@ class FilesFolder():
         if not os.path.exists(main_folder_path):
             raise IOError("incorrect path of your main folder!")       
         self._root_path=main_folder_path 
-        self._files=[]
+        self._files={}
         #TESTS
         self._list_all_filepaths()
         
     def _list_all_filepaths(self):
-        modified_root_path= self._root_path.replace("\\","\\\\")
-        for root_dir, subdirs, files in os.walk(self._root_path):
-            if re.match(r'%s(\\\w*)$'%modified_root_path,root_dir):
-                print("AFTER "+root_dir)
-                print([subdir.encode('utf8') for subdir in subdirs])
-                print([file.encode('utf8') for file in files])
-                # self._files.append(file)
+        #print(os.listdir(self._root_path))
+        for file_path in os.listdir(self._root_path):
+            if os.path.isfile(os.path.join(self._root_path,file_path)):
+                #print(os.path.join(self._root_path,file)) #left files
+                pass
+            else:
+                self._files[file_path]={"PATH":os.path.join(self._root_path,file_path)}
+        print(self._files) 
+        for name,dataDict in self._files.items():
+            folders_set=set([])
+            files_set= set([])
+            for root_dir, subdirs, files in os.walk(dataDict["PATH"]):
+                #print([subdir.encode('utf8') for subdir in subdirs])
+                #print([file.encode('utf8') for file in files])
+                folders_set.add(root_dir)
+                #print(root_dir)
+                for file in files:
+                        files_set.add(os.path.join(root_dir,file))
+                for subdir in subdirs:
+                    folders_set.add(os.path.join(root_dir,subdir))
+                    for file in files:
+                        files_set.add(os.path.join(root_dir,file))
+
+            with open("result.txt","a") as f:
+                f.write("\n--------------------NAME---------------------------\n")
+                f.write("----------------------NAME---------------------------\n")
+                f.write("----------------------NAME---------------------------\n")
+                f.write("----------------------NAME---------------------------\n")
+                f.write("----------------------NAME---------------------------\n")
+                f.write("----------------------NAME---------------------------\n")
+                f.write("----------------------NAME---------------------------\n")
+                f.write("----------------------NAME---------------------------\n")
+                f.write("----------------------NAME---------------------------\n")
+                f.write("----------------------NAME---------------------------\n")
+                f.write("----------------------NAME---------------------------\n")
+                f.write("----------------------NAME---------------------------\n")
+                f.write("----------------------NAME---------------------------\n")
+                f.write(name)
+                f.write('\n')
+                
+                f.write("\n--------------------FOLDERS---------------------------\n")
+                f.write("--------------------FOLDERS---------------------------\n")
+                f.write("--------------------FOLDERS---------------------------\n")
+                f.write("--------------------FOLDERS---------------------------\n")
+                f.write("--------------------FOLDERS---------------------------\n")
+                f.write("--------------------FOLDERS---------------------------\n")
+                f.write("--------------------FOLDERS---------------------------\n")
+                f.write("--------------------FOLDERS---------------------------\n")
+                f.write("--------------------FOLDERS---------------------------\n")
+                f.write("--------------------FOLDERS---------------------------\n")
+                f.write("--------------------FOLDERS---------------------------\n")
+                f.write("--------------------FOLDERS---------------------------\n")
+                f.write("--------------------FOLDERS---------------------------\n")
+                f.write("--------------------FOLDERS---------------------------\n")
+                f.write("--------------------FOLDERS---------------------------\n")
+                f.write("--------------------FOLDERS---------------------------\n")
+                f.write("--------------------FOLDERS---------------------------\n")
+                f.write("--------------------FOLDERS---------------------------\n")
+                f.write("--------------------FOLDERS---------------------------\n")
+                f.write("--------------------FOLDERS---------------------------\n")
+                f.write("--------------------FOLDERS---------------------------\n")
+                f.write("--------------------FOLDERS---------------------------\n")
+                f.write("--------------------FOLDERS---------------------------\n")
+                f.write("--------------------FOLDERS---------------------------\n")
+                for i in sorted(folders_set, key=len):
+                    f.write(i)
+                    f.write('\n')
+                f.write("\n--------------------FILES---------------------------\n")
+                f.write("--------------------FILES---------------------------\n")
+                f.write("--------------------FILES---------------------------\n")
+                f.write("--------------------FILES---------------------------\n")
+                f.write("--------------------FILES---------------------------\n")
+                f.write("--------------------FILES---------------------------\n")
+                f.write("--------------------FILES---------------------------\n")
+                f.write("--------------------FILES---------------------------\n")
+                f.write("--------------------FILES---------------------------\n")
+                f.write("--------------------FILES---------------------------\n")
+                f.write("--------------------FILES---------------------------\n")
+                f.write("--------------------FILES---------------------------\n")
+                f.write("--------------------FILES---------------------------\n")
+                f.write("--------------------FILES---------------------------\n")
+                f.write("--------------------FILES---------------------------\n")
+                f.write("--------------------FILES---------------------------\n")
+                for i in files_set:
+                    f.write(i)
+                    f.write('\n')
+            self._files[name]["FOLDERS"]=sorted(folders_set, key=len)
+            self._files[name]["FILES"]=list(files_set)
+            # print("\n--------------------PATH---------------------------\n")
+            # print(self._files[name]["PATH"])
+            # print("\n--------------------FOLDERS---------------------------\n")
+            # print(self._files[name]["FOLDERS"])
+            # print("\n--------------------FILES---------------------------\n")
+            # print(self._files[name]["FILES"])
+            #break
 
         
 if __name__ == '__main__':
     google_drive_syncer= GoogleDriveSynchronizer()
-    #file_folder = FilesFolder(os.path.join(FOLDER_TO_BE_SYNCED_PATH))
+    file_folder = FilesFolder(os.path.join(FOLDER_TO_BE_SYNCED_PATH))
     #google_drive_syncer.list_all_files_in_folder()
-    google_drive_syncer.find_folder_or_file_by_name("EMBEDDED")
+    #google_drive_syncer.find_folder_or_file_by_name("EMBEDDED")
