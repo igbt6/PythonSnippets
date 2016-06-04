@@ -19,10 +19,12 @@ FOLDER_TO_BE_SYNCED_PATH= 'L:\EBOOKS'
 
 class GoogleDriveSynchronizer():
 
-    def __init__(self):
+    def __init__(self,root_folder_name):
+        self._root_folder= root_folder_name
         self._credentials = self.get_credentials()
         self._http_auth = self._credentials.authorize(httplib2.Http())
         self._service = discovery.build('drive', 'v3', http=self._http_auth)
+        self.check_if_file_exist_create_new_one(self._root_folder)
         
     def get_credentials(self):
         '''Gets valid user credentials from storage.
@@ -50,7 +52,7 @@ class GoogleDriveSynchronizer():
        
     def find_folder_or_file_by_name(self,file_name):
         if(file_name ==None or len(file_name)==0):
-            return
+            return False
         page_token = None
         while True:
             response = self._service.files().list(q="name = '%s'"%file_name,
@@ -58,11 +60,20 @@ class GoogleDriveSynchronizer():
                                                  pageToken=page_token).execute()
             for file in response.get('files', []):
                 print('Found file: %s (%s)' % (file.get('name'), file.get('id')))
+                return True
             page_token = response.get('nextPageToken', None)
             if page_token is None:
-                break;
+                return False;
         
+    def check_if_file_exist_create_new_one(self,file_name):
+        if self.find_folder_or_file_by_name(file_name):
+            print(file_name + " exists")
+            pass
+        else:
+            print(file_name + " does not exist")
+            self.create_new_folder(name)
         
+    
     def list_all_files_in_folder(self):
         results = self._service.files().list().execute()
         items = results.get('files', [])
@@ -112,6 +123,9 @@ class GoogleDriveSynchronizer():
             # status, done = downloader.next_chunk()
             # print("Download %d%%." % int(status.progress() * 100))
 
+            
+            
+            
 class FilesFolder():
 
     def __init__(self, main_folder_path):
@@ -130,7 +144,7 @@ class FilesFolder():
                 pass
             else:
                 self._files[file_path]={"PATH":os.path.join(self._root_path,file_path)}
-        print(self._files) 
+        #print(self._files) 
         for name,dataDict in self._files.items():
             folders_set=set([])
             files_set= set([])
@@ -218,10 +232,25 @@ class FilesFolder():
             # print("\n--------------------FILES---------------------------\n")
             # print(self._files[name]["FILES"])
             #break
-
+     
+    def extract_folder_name_from_path(self,folder_path):
+        m =re.search(r'\\(\w*)$',folder_path)
+        if m:
+            return m.group(1)
+        else:
+            raise ValueError("Incorrect folder_path %s"%folder_path)
+            
+    @property
+    def files(self):
+        return self._files
+    
+    @property
+    def root_folder_path(self):
+        return self._root_path
         
 if __name__ == '__main__':
-    google_drive_syncer= GoogleDriveSynchronizer()
     file_folder = FilesFolder(os.path.join(FOLDER_TO_BE_SYNCED_PATH))
+    google_drive_syncer= GoogleDriveSynchronizer(file_folder.extract_folder_name_from_path(file_folder.root_folder_path))  
     #google_drive_syncer.list_all_files_in_folder()
-    #google_drive_syncer.find_folder_or_file_by_name("EMBEDDED")
+    for name, data in file_folder.files.items():
+        google_drive_syncer.check_if_file_exist_create_new_one(name)
