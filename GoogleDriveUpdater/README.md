@@ -1,6 +1,7 @@
 ## Google drive updater
 App lets you to control content of your google drive 
 More: https://developers.google.com/drive/v3/web/quickstart/python
+or https://developers.google.com/drive/v3/reference/
 
 ### Requirements:
 * Python 3.x
