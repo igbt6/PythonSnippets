@@ -21,11 +21,11 @@ FOLDER_TO_BE_SYNCED_PATH= 'L:\GOOGLE_DRIVE_SYNCER_TEST_FOLDER'
 class GoogleDriveSynchronizer():
 
     def __init__(self,root_folder_name):
-        self._root_folder= root_folder_name
+        self._root_folder= GoogleDriveFile(root_folder_name)
         self._credentials = self.get_credentials()
         self._http_auth = self._credentials.authorize(httplib2.Http())
         self._service = discovery.build('drive', 'v3', http=self._http_auth)
-        #self.check_if_file_exist_create_new_one(self._root_folder)
+        self._root_folder.id=self.check_if_file_exist_create_new_one(self._root_folder.name)
         
     def get_credentials(self):
         '''Gets valid user credentials from storage.
@@ -51,24 +51,26 @@ class GoogleDriveSynchronizer():
             print('Storing credentials to ' + credential_path)
         return credentials
        
-    def find_folder_or_file_by_name(self,file_name):
+    def find_folder_or_file_by_name(self,file_name,parent_id=None):
         if(file_name ==None or len(file_name)==0):
             return False
         page_token = None
+        if parent_id is not None:
+            query=("name = '%s' and '%s' in parents"%(file_name,parent_id))
+        else:
+            query=("name = '%s'"%file_name)
         while True:
-            response = self._service.files().list(q="name = '%s'"%file_name,
-                                                 spaces='drive',fields='nextPageToken, files(id, name)',
-                                                 pageToken=page_token).execute()
+            response = self._service.files().list(q=query,spaces='drive',fields='nextPageToken, files(id, name, parents)',pageToken=page_token).execute()
             for file in response.get('files', []):
-                print('Found file: %s (%s)' % (file.get('name'), file.get('id')))
+                print('Found file: %s (%s) %s' % (file.get('name'), file.get('id'),file.get('parents')))
                 return file.get('id')
             page_token = response.get('nextPageToken', None)
             if page_token is None:
                 return False;
         
     def check_if_file_exist_create_new_one(self,file_name,parent_id=None):
-        id = self.find_folder_or_file_by_name(file_name)
-        if self.find_folder_or_file_by_name(file_name):
+        id = self.find_folder_or_file_by_name(file_name,parent_id)
+        if id:
             print(file_name + " exists")
         else:
             print(file_name + " does not exist")
@@ -86,27 +88,60 @@ class GoogleDriveSynchronizer():
             for item in items:
                 print('{0} ({1})'.format(item['name'], item['id']))
         
-    def create_new_folder(self,folder_name,parent_folders_ids:list =None):
+    def create_new_folder(self,folder_name,parent_folders_id =None):
+        parent_id= parent_folders_id if parent_folders_id is None else [parent_folders_id]
         file_metadata = {
             'name' : folder_name,
             'mimeType' : 'application/vnd.google-apps.folder',
-            'parents': parent_folders_ids
+            'parents': parent_id
         }
         file = self._service.files().create(body=file_metadata, fields='id').execute()
         print('Created Folder ID: %s' % file.get('id'))
         return file.get('id')
     
-    def insert_file_in_folder(self,file_name,path,parent_folders_ids:list,file_mime_type=None):
+    def insert_file_in_folder(self,file_name,path,parent_folders_id,file_mime_type=None):
+        parent_id= parent_folders_id if parent_folders_id is None else [parent_folders_id]
         file_metadata = {
           'name' : file_name,
-          'parents': parent_folders_ids
+          'parents': parent_id
         }
-        media = MediaFileUpload(path,
-                                mimetype=file_mime_type,  # if None, it will be guessed 
+        media = MediaFileUpload(path,mimetype=file_mime_type,  # if None, it will be guessed 
                                 resumable=True)
         file = self._service.files().create(body=file_metadata,media_body=media,fields='id').execute()
         print('File ID: %s' % file.get('id'))
-        
+    
+    
+    def create_folders_tree(self,folders):
+        if folders is None or len(folders)==0:
+            raise ValueError("Incorrect folders format")
+        self.folders_tree=[self._root_folder]
+        #creates folders in root folder
+        # for name, data in folders.items():
+            # id=self.check_if_file_exist_create_new_one(name,self._root_folder.id)
+            # if id is not False:
+                # folder=GoogleDriveFile(name)
+                # folder.id=id
+                # folder.parent_id=self._root_folder.id
+                # self.folders_tree.append(folder)
+            # else:
+               # return  #shall not go into here 
+        #creates rest folders as in root folder
+        for name, data in folders.items():
+            for path in data["FOLDERS"]:
+                splitted_path= os.path.split(path)
+                folder_name=splitted_path[1]
+                parent_folder_name=os.path.split(splitted_path[0])[1]
+                print(parent_folder_name+" -> "+folder_name)
+                for file in self.folders_tree:
+                    print("------- "+ file.name)
+                    if file.name==parent_folder_name:
+                        folder=GoogleDriveFile(folder_name)
+                        folder.parent_id=file.id
+                        id=self.check_if_file_exist_create_new_one(folder_name,folder.parent_id)
+                        folder.id=id 
+                        self.folders_tree.append(folder)                        
+                        
+         
     def main():
         results = self._service.files().list(pageSize=10,fields="nextPageToken, files(id, name)").execute()
         items = results.get('files', [])
@@ -235,7 +270,8 @@ class FilesFolder():
             # print("\n--------------------FILES---------------------------\n")
             # print(self._files[name]["FILES"])
             #break
-     
+
+        
     def extract_folder_name_from_path(self,folder_path):
         m =re.search(r'\\(\w*)$',folder_path)
         if m:
@@ -251,13 +287,13 @@ class FilesFolder():
     def root_folder_path(self):
         return self._root_path
         
-        
-        
+               
 class GoogleDriveFile():
-    def __init__(file_name):
-        self.file_name= file_name
-        self.file_id =None
-        self.parent_folder_id=''
+    """ Helper class that describes File or Folder on GoogleDrive server"""
+    def __init__(self,file_name):
+        self.name= file_name
+        self.id =None
+        self.parent_id=''
     
         
 if __name__ == '__main__':
@@ -267,9 +303,10 @@ if __name__ == '__main__':
     #for name, data in file_folder.files.items():
         #google_drive_syncer.check_if_file_exist_create_new_one(name)
     # TEST1
-    id=google_drive_syncer.check_if_file_exist_create_new_one("TEST_FOLDER")
-    google_drive_syncer.insert_file_in_folder("TestFolderFile.txt",os.path.join(FOLDER_TO_BE_SYNCED_PATH,"cowsay.txt"),[id])
-    #0B0zxuHK9yGdHSC15aG5FWExBNm8
-    #id=google_drive_syncer.check_if_file_exist_create_new_one("TEST_SUB_FOLDER",["0B0zxuHK9yGdHSC15aG5FWExBNm8"])
-    id=google_drive_syncer.check_if_file_exist_create_new_one("TEST_SUB_FOLDER",[id])
-    google_drive_syncer.insert_file_in_folder("TestSubFolderFile.txt",os.path.join(FOLDER_TO_BE_SYNCED_PATH,"cowsay.txt"),[id])
+    # id=google_drive_syncer.check_if_file_exist_create_new_one("TEST_FOLDER")
+    # google_drive_syncer.insert_file_in_folder("TestFolderFile.txt",os.path.join(FOLDER_TO_BE_SYNCED_PATH,"cowsay.txt"),id)
+    # id=google_drive_syncer.check_if_file_exist_create_new_one("TEST_SUB_FOLDER",id)
+    # google_drive_syncer.insert_file_in_folder("TestSubFolderFile.txt",os.path.join(FOLDER_TO_BE_SYNCED_PATH,"cowsay.txt"),id)
+    
+    #TEST2
+    google_drive_syncer.create_folders_tree(file_folder.files)
