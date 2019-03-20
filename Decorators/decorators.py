@@ -95,6 +95,30 @@ def complex_computations(*args):
     return sum(args)
 
 
+#4# proxy
+class User():
+    def __init__(self, roles):
+        self.roles = roles
+
+class Unauthorized(Exception):
+    pass
+
+def login(role):
+    def _login(function):
+        def __login(*args, **kwargs):
+            user = globals().get('user')
+            if user is None or role not in user.roles:
+                raise Unauthorized("Access forbidden!")
+            return function(*args, **kwargs)
+        return __login
+    return _login
+
+class LoginPage():
+    @login('admin')
+    def main_page(self):
+        print("Hello, you have logged in succsfully!")
+
+
 
 
 
@@ -125,3 +149,17 @@ if __name__ == '__main__':
     import random as rnd
     for _ in range(20):
         complex_computations(rnd.randint(0, 10))
+
+#5#
+    try:
+        user = User(('user', 'tester'))
+        web_page = LoginPage()
+        web_page.main_page()
+    except Exception as e:
+        print(str(e))
+
+    try:
+        user = User(('admin', 'tester'))
+        web_page.main_page()
+    except Exception as e:
+        print(str(e))
