@@ -130,27 +130,27 @@ class LoginPage():
 if __name__ == '__main__':
 
 
-#1#
+##1# - function decorator
     heavy_comp = my_decorator(lambda x: print(x*x*x*x))
     heavy_comp(1000000)
     heavy_computation(1000000)
 
-#2#
+##2# - parametrizing decorators
     debug()
     foo(deb)()
 
-#3#
+##3# - functools wraps
     func_with_docstring("FUNC WITH WRAPS")
     # remove @wraps(func) from preserving_decorator
     print(func_with_docstring.__name__)
     print(func_with_docstring.__doc__) 
 
-#4#
+##4# caching decorator
     import random as rnd
     for _ in range(20):
         complex_computations(rnd.randint(0, 10))
 
-#5#
+##5# proxy
     try:
         user = User(('user', 'tester'))
         web_page = LoginPage()
